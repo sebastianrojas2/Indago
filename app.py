@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -8,6 +9,7 @@ CORS(app)
 
 FMP_KEY = os.environ.get("FMP_API_KEY", "")
 FMP_BASE = "https://financialmodelingprep.com/stable"
+ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 
 def fmp(path, params=None):
@@ -91,8 +93,33 @@ def earnings(ticker):
 
 @app.route("/api/news/<ticker>")
 def news(ticker):
-    data = fmp("/news/stock", {"symbol": ticker.upper(), "limit": 8})
-    return jsonify(data)
+    if not ANTHROPIC_KEY:
+        return jsonify([])
+    r = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": ANTHROPIC_KEY,
+            "content-type": "application/json",
+            "anthropic-version": "2023-06-01",
+        },
+        json={
+            "model": "claude-sonnet-4-6",
+            "max_tokens": 1024,
+            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
+            "messages": [{"role": "user", "content": f"Find the 6 most recent news headlines about {ticker.upper()} stock. Return ONLY valid JSON — no markdown, no code fences, no extra text. Format: [{{\"title\":\"...\",\"source\":\"...\",\"date\":\"YYYY-MM-DD\",\"url\":\"...\"}}]"}],
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    blocks = r.json().get("content", [])
+    text = "".join(b["text"] for b in blocks if b.get("type") == "text")
+    try:
+        articles = json.loads(text)
+    except json.JSONDecodeError:
+        import re
+        m = re.search(r"\[.*\]", text, re.DOTALL)
+        articles = json.loads(m.group()) if m else []
+    return jsonify(articles)
 
 
 @app.route("/api/keydmetrics/<ticker>")
@@ -105,6 +132,33 @@ def key_metrics(ticker):
 def ma_search(ticker):
     data = fmp("/mergers-acquisitions-rss-feed", {"page": 0})
     return jsonify(data)
+
+
+@app.route("/api/report/<ticker>", methods=["POST"])
+def report(ticker):
+    if not ANTHROPIC_KEY:
+        return jsonify({"error": "No API key configured"}), 500
+    body = request.get_json(silent=True) or {}
+    prompt = body.get("prompt", "")
+    r = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": ANTHROPIC_KEY,
+            "content-type": "application/json",
+            "anthropic-version": "2023-06-01",
+        },
+        json={
+            "model": "claude-sonnet-4-6",
+            "max_tokens": 1500,
+            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+            "messages": [{"role": "user", "content": prompt}],
+        },
+        timeout=60,
+    )
+    r.raise_for_status()
+    blocks = r.json().get("content", [])
+    text = "".join(b["text"] for b in blocks if b.get("type") == "text")
+    return jsonify({"text": text})
 
 
 if __name__ == "__main__":
