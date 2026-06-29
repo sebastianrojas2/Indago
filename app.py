@@ -138,11 +138,11 @@ def ma_search(ticker):
 
 @app.route("/api/report/<ticker>", methods=["POST"])
 def report(ticker):
-    if not ANTHROPIC_KEY:
-        return jsonify({"error": "ANTHROPIC_API_KEY not set in environment"}), 500
-    body = request.get_json(silent=True) or {}
-    prompt = body.get("prompt", "")
     try:
+        if not ANTHROPIC_KEY:
+            return jsonify({"error": "ANTHROPIC_API_KEY not set in environment"}), 500
+        body = request.get_json(silent=True) or {}
+        prompt = body.get("prompt", "")
         r = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={
@@ -163,8 +163,8 @@ def report(ticker):
         blocks = r.json().get("content", [])
         text = "".join(b["text"] for b in blocks if b.get("type") == "text")
         return jsonify({"text": text})
-    except Exception as e:
-        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
+    except Exception:
+        return jsonify({"error": traceback.format_exc()}), 500
 
 
 if __name__ == "__main__":
