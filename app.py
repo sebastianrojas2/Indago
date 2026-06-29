@@ -137,28 +137,32 @@ def ma_search(ticker):
 @app.route("/api/report/<ticker>", methods=["POST"])
 def report(ticker):
     if not ANTHROPIC_KEY:
-        return jsonify({"error": "No API key configured"}), 500
+        return jsonify({"error": "ANTHROPIC_API_KEY not set in environment"}), 500
     body = request.get_json(silent=True) or {}
     prompt = body.get("prompt", "")
-    r = requests.post(
-        "https://api.anthropic.com/v1/messages",
-        headers={
-            "x-api-key": ANTHROPIC_KEY,
-            "content-type": "application/json",
-            "anthropic-version": "2023-06-01",
-        },
-        json={
-            "model": "claude-sonnet-4-6",
-            "max_tokens": 1500,
-            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
-            "messages": [{"role": "user", "content": prompt}],
-        },
-        timeout=60,
-    )
-    r.raise_for_status()
-    blocks = r.json().get("content", [])
-    text = "".join(b["text"] for b in blocks if b.get("type") == "text")
-    return jsonify({"text": text})
+    try:
+        r = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_KEY,
+                "content-type": "application/json",
+                "anthropic-version": "2023-06-01",
+            },
+            json={
+                "model": "claude-sonnet-4-6",
+                "max_tokens": 1500,
+                "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+                "messages": [{"role": "user", "content": prompt}],
+            },
+            timeout=60,
+        )
+        if r.status_code != 200:
+            return jsonify({"error": f"Anthropic API {r.status_code}: {r.text}"}), r.status_code
+        blocks = r.json().get("content", [])
+        text = "".join(b["text"] for b in blocks if b.get("type") == "text")
+        return jsonify({"text": text})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
