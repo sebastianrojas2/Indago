@@ -26,6 +26,12 @@ def index():
     return app.send_static_file("index.html")
 
 
+@app.route("/api/test")
+def test():
+    key = os.environ.get("ANTHROPIC_API_KEY", "NOT FOUND")
+    return jsonify({"key_exists": bool(key), "key_preview": key[:15] if key != "NOT FOUND" else "NOT FOUND"})
+
+
 @app.route("/api/quote/<ticker>")
 def quote(ticker):
     data = fmp("/quote", {"symbol": ticker.upper()})
