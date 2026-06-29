@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Indago — Equity Research</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d0f12;
+    --bg2: #13161b;
+    --bg3: #1a1e25;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8b909e;
+    --text3: #555b6a;
+    --accent: #4f8ef7;
+    --accent2: #3a6fd4;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Inter', sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f8;
+      --bg2: #ffffff;
+      --bg3: #eef0f4;
+      --border: rgba(0,0,0,0.07);
+      --border2: rgba(0,0,0,0.12);
+      --text: #0d0f12;
+      --text2: #5a6072;
+      --text3: #9ba3b4;
+      --accent: #2563eb;
+      --accent2: #1d4ed8;
+      --green: #059669;
+      --red: #dc2626;
+      --yellow: #d97706;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+  /* HEADER */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 20px 32px; border-bottom: 1px solid var(--border); }
+  .logo { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; }
+  .logo span { color: var(--accent); }
+
+  /* SEARCH */
+  .search-wrap { padding: 40px 32px 0; max-width: 900px; margin: 0 auto; }
+  .search-box { display: flex; gap: 10px; }
+  .search-box input {
+    flex: 1; background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: var(--radius); padding: 14px 18px; font-size: 15px;
+    font-family: var(--mono); color: var(--text); outline: none;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    transition: border-color 0.15s;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box input::placeholder { text-transform: none; letter-spacing: 0; color: var(--text3); font-family: var(--sans); }
+  .btn {
+    background: var(--accent); color: #fff; border: none; border-radius: var(--radius);
+    padding: 14px 24px; font-size: 14px; font-weight: 500; cursor: pointer;
+    font-family: var(--sans); transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent2); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; padding: 4px 12px;
+    border: 1px solid var(--border2); border-radius: 20px; cursor: pointer;
+    color: var(--text2); transition: all 0.15s; background: transparent;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* MAIN */
+  main { max-width: 900px; margin: 0 auto; padding: 32px; }
+
+  /* LOADING */
+  #loading { display: none; text-align: center; padding: 80px 0; }
+  .spinner { width: 32px; height: 32px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { color: var(--text2); font-size: 13px; }
+
+  /* ERROR */
+  #error-box { display: none; background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2); border-radius: var(--radius); padding: 14px 18px; color: var(--red); font-size: 13px; margin-bottom: 24px; }
+
+  /* HERO */
+  #hero { display: none; margin-bottom: 28px; }
+  .hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+  .company-name { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .ticker-badge { font-family: var(--mono); font-size: 12px; color: var(--text2); background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; margin-left: 8px; vertical-align: middle; }
+  .price-block { text-align: right; }
+  .price-main { font-family: var(--mono); font-size: 28px; font-weight: 500; }
+  .price-change { font-size: 13px; margin-top: 2px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* STAT ROW */
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .stat-val { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--text); }
+
+  /* TABS */
+  .tabs { display: flex; gap: 2px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px; margin-bottom: 20px; overflow-x: auto; }
+  .tab { flex: 1; min-width: max-content; padding: 8px 14px; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; border-radius: 7px; text-align: center; transition: all 0.15s; border: none; background: transparent; font-family: var(--sans); }
+  .tab.active { background: var(--bg3); color: var(--text); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+
+  /* SCORECARD */
+  .metric-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-name { font-size: 13px; color: var(--text); }
+  .metric-ideal { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+  .metric-right { display: flex; align-items: center; gap: 10px; }
+  .metric-val { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge-pass { background: rgba(52,211,153,0.12); color: var(--green); }
+  .badge-fail { background: rgba(248,113,113,0.12); color: var(--red); }
+  .badge-na { background: var(--bg3); color: var(--text3); }
+
+  /* SCORE DISPLAY */
+  .score-wrap { display: flex; align-items: center; gap: 20px; padding: 16px 0 20px; }
+  .score-circle { width: 72px; height: 72px; border-radius: 50%; border: 3px solid; display: flex; align-items: center; justify-content: center; flex-direction: column; flex-shrink: 0; }
+  .score-num { font-family: var(--mono); font-size: 20px; font-weight: 500; }
+  .score-sub { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .score-info h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .score-info p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+  /* FOOTBALL FIELD */
+  .football-field { margin-top: 8px; }
+  .ff-row { margin-bottom: 14px; }
+  .ff-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .ff-bar-wrap { position: relative; height: 28px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+  .ff-bar { height: 100%; border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-family: var(--mono); font-size: 11px; font-weight: 500; color: #fff; min-width: 60px; transition: width 0.6s ease; }
+  .ff-current { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--yellow); }
+  .ff-current-label { position: absolute; top: -18px; font-size: 10px; color: var(--yellow); font-family: var(--mono); transform: translateX(-50%); white-space: nowrap; }
+
+  /* DCF TABLE */
+  .dcf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .dcf-input-group label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
+  .dcf-input-group input { width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; font-family: var(--mono); font-size: 13px; color: var(--text); outline: none; }
+  .dcf-input-group input:focus { border-color: var(--accent); }
+  .dcf-result { background: var(--bg3); border-radius: var(--radius); padding: 16px; text-align: center; margin-top: 4px; }
+  .dcf-result .label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  .dcf-result .value { font-family: var(--mono); font-size: 22px; font-weight: 500; }
+  .dcf-result .updown { font-size: 12px; margin-top: 4px; }
+
+  /* COMPS TABLE */
+  .comps-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .comps-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .comps-table th:first-child { text-align: left; }
+  .comps-table td { padding: 8px 10px; text-align: right; border-bottom: 1px solid var(--border); font-family: var(--mono); color: var(--text2); }
+  .comps-table td:first-child { text-align: left; font-family: var(--sans); color: var(--text); font-weight: 500; }
+  .comps-table tr.highlight td { color: var(--accent); }
+  .comps-table tr:last-child td { border-bottom: none; }
+
+  /* REPORT */
+  .report-section { margin-bottom: 20px; }
+  .report-section h4 { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .report-section p { font-size: 14px; color: var(--text2); line-height: 1.75; }
+  .report-generating { text-align: center; padding: 40px 0; color: var(--text3); font-size: 13px; }
+
+  /* MA / LBO */
+  .lbo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .lbo-stat { background: var(--bg3); border-radius: var(--radius); padding: 12px 14px; }
+  .lbo-stat .label { font-size: 11px; color: var(--text3); margin-bottom: 3px; }
+  .lbo-stat .val { font-family: var(--mono); font-size: 15px; font-weight: 500; }
+
+  /* NEWS */
+  .news-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .news-item:last-child { border-bottom: none; }
+  .news-item a { font-size: 13px; font-weight: 500; color: var(--text); text-decoration: none; line-height: 1.4; display: block; margin-bottom: 4px; }
+  .news-item a:hover { color: var(--accent); }
+  .news-meta { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+
+  /* EARNINGS */
+  .earnings-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .earnings-row:last-child { border-bottom: none; }
+
+  /* CHART */
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
+
+  /* UPSIDE PILL */
+  .upside-pill { display: inline-block; font-size: 12px; font-family: var(--mono); padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+
+  @media (max-width: 600px) {
+    header { padding: 16px 20px; }
+    .search-wrap { padding: 24px 20px 0; }
+    main { padding: 24px 20px; }
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+    .dcf-grid { grid-template-columns: 1fr; }
+    .lbo-grid { grid-template-columns: 1fr; }
+    .hero-top { flex-direction: column; }
+    .price-block { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ind<span>a</span>go</div>
+  <div style="font-size:12px;color:var(--text3);font-family:var(--mono)">equity research</div>
+</header>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <input type="text" id="ticker-input" placeholder="Enter a ticker symbol (e.g. AAPL)" maxlength="6" />
+    <button class="btn" onclick="analyze()" id="analyze-btn">Analyze</button>
+  </div>
+  <div class="chips">
+    <span class="chip" onclick="quick('AAPL')">AAPL</span>
+    <span class="chip" onclick="quick('NVDA')">NVDA</span>
+    <span class="chip" onclick="quick('MSFT')">MSFT</span>
+    <span class="chip" onclick="quick('SOFI')">SOFI</span>
+    <span class="chip" onclick="quick('TSLA')">TSLA</span>
+    <span class="chip" onclick="quick('META')">META</span>
+    <span class="chip" onclick="quick('AMZN')">AMZN</span>
+  </div>
+</div>
+
+<main>
+  <div id="error-box"></div>
+  <div id="loading">
+    <div class="spinner"></div>
+    <p id="loading-text">Fetching data...</p>
+  </div>
+
+  <div id="hero">
+    <div class="hero-top">
+      <div>
+        <div class="company-name" id="h-name">--<span class="ticker-badge" id="h-ticker"></span></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px;" id="h-sector"></div>
+      </div>
+      <div class="price-block">
+        <div class="price-main" id="h-price">--</div>
+        <div class="price-change" id="h-change"></div>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Market cap</div><div class="stat-val" id="s-mktcap">--</div></div>
+      <div class="stat-card"><div class="stat-label">EV</div><div class="stat-val" id="s-ev">--</div></div>
+      <div class="stat-card"><div class="stat-label">52w range</div><div class="stat-val" id="s-52w" style="font-size:12px;">--</div></div>
+      <div class="stat-card"><div class="stat-label">Avg volume</div><div class="stat-val" id="s-vol">--</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('scorecard',this)">Scorecard</button>
+      <button class="tab" onclick="switchTab('valuation',this)">Valuation</button>
+      <button class="tab" onclick="switchTab('comps',this)">Comps</button>
+      <button class="tab" onclick="switchTab('chart',this)">Chart</button>
+      <button class="tab" onclick="switchTab('lbo',this)">LBO / M&A</button>
+      <button class="tab" onclick="switchTab('report',this)">Report</button>
+      <button class="tab" onclick="switchTab('news',this)">News</button>
+    </div>
+
+    <!-- SCORECARD -->
+    <div class="tab-panel active" id="panel-scorecard">
+      <div class="card">
+        <div id="score-summary"></div>
+        <div class="card-title" style="margin-top:16px;">Metric scorecard</div>
+        <div id="metrics-list"></div>
+      </div>
+    </div>
+
+    <!-- VALUATION -->
+    <div class="tab-panel" id="panel-valuation">
+      <div class="card">
+        <div class="card-title">DCF — discounted cash flow</div>
+        <div class="dcf-grid">
+          <div class="dcf-input-group">
+            <label>Revenue growth (yr 1-5)</label>
+            <input type="number" id="dcf-growth" value="15" step="1" onchange="runDCF()" />
+          </div>
+          <div class="dcf-input-group">
+            <label>Terminal growth rate</label>
+            <input type="number" id="dcf-terminal" value="3" step="0.5" onchange="runDCF()" />
+          </div>
+          <div class="dcf-input-group">
+            <label>WACC (%)</label>
+            <input type="number" id="dcf-wacc" value="10" step="0.5" onchange="runDCF()" />
+          </div>
+          <div class="dcf-input-group">
+            <label>FCF margin (%)</label>
+            <input type="number" id="dcf-fcf" value="15" step="1" onchange="runDCF()" />
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px;">
+          <div class="dcf-result">
+            <div class="label">Implied price</div>
+            <div class="value" id="dcf-implied">--</div>
+            <div class="updown" id="dcf-updown"></div>
+          </div>
+          <div class="dcf-result">
+            <div class="label">Current price</div>
+            <div class="value" id="dcf-current">--</div>
+            <div class="updown" style="color:var(--text3);font-size:11px;">market price</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Football field — valuation range</div>
+        <div class="football-field" id="football-field"></div>
+      </div>
+    </div>
+
+    <!-- COMPS -->
+    <div class="tab-panel" id="panel-comps">
+      <div class="card">
+        <div class="card-title">Trading comps — peer comparison</div>
+        <div style="overflow-x:auto;">
+          <table class="comps-table" id="comps-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Price</th>
+                <th>Mkt cap</th>
+                <th>P/E</th>
+                <th>EV/EBITDA</th>
+                <th>P/S</th>
+                <th>Gross margin</th>
+              </tr>
+            </thead>
+            <tbody id="comps-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="tab-panel" id="panel-chart">
+      <div class="card">
+        <div class="card-title">Price history — 1 year</div>
+        <div class="chart-wrap">
+          <canvas id="price-chart" role="img" aria-label="1 year price history chart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Earnings history</div>
+        <div id="earnings-list"></div>
+      </div>
+    </div>
+
+    <!-- LBO / MA -->
+    <div class="tab-panel" id="panel-lbo">
+      <div class="card">
+        <div class="card-title">LBO feasibility</div>
+        <div class="lbo-grid" id="lbo-grid"></div>
+        <div id="lbo-verdict" style="margin-top:16px;font-size:13px;color:var(--text2);line-height:1.65;"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">M&A fit analysis</div>
+        <div id="ma-grid" class="lbo-grid" style="margin-bottom:14px;"></div>
+        <div id="ma-verdict" style="font-size:13px;color:var(--text2);line-height:1.65;"></div>
+      </div>
+    </div>
+
+    <!-- REPORT -->
+    <div class="tab-panel" id="panel-report">
+      <div class="card">
+        <div id="report-content"><div class="report-generating"><div class="spinner" style="margin-bottom:12px;"></div>Generating report with live web search...</div></div>
+      </div>
+    </div>
+
+    <!-- NEWS -->
+    <div class="tab-panel" id="panel-news">
+      <div class="card">
+        <div class="card-title">Latest news</div>
+        <div id="news-list"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+let currentData = {};
+let priceChart = null;
+
+function quick(t) {
+  document.getElementById('ticker-input').value = t;
+  analyze();
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+function fmtNum(v, dec=1) {
+  if (v == null || isNaN(v)) return 'N/A';
+  return v.toFixed(dec);
+}
+
+function fmtBig(v) {
+  if (!v || isNaN(v)) return 'N/A';
+  if (v >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T';
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
+  return '$' + v.toFixed(0);
+}
+
+function fmtVol(v) {
+  if (!v) return 'N/A';
+  if (v >= 1e6) return (v/1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v/1e3).toFixed(0) + 'K';
+  return v;
+}
+
+function showErr(msg) {
+  const el = document.getElementById('error-box');
+  el.textContent = msg;
+  el.style.display = 'block';
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('hero').style.display = 'none';
+}
+
+async function fetchAll(ticker) {
+  const endpoints = ['quote','profile','ratios','income','balance','cashflow','history','analyst','earnings','news','keydmetrics'];
+  const results = await Promise.allSettled(
+    endpoints.map(e => fetch(`/api/${e}/${ticker}`).then(r => r.json()))
+  );
+  const [quote, profile, ratios, income, balance, cashflow, history, analyst, earnings, news, keymetrics] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+  return { quote, profile, ratios, income, balance, cashflow, history, analyst, earnings, news, keymetrics };
+}
+
+const METRICS = [
+  { label: 'Gross profit margin', ideal: '20-50%', field: 'grossProfitMarginTTM', min: 0.20, max: 0.50, pct: true },
+  { label: 'Operating margin', ideal: '10-30%', field: 'operatingProfitMarginTTM', min: 0.10, max: 0.30, pct: true },
+  { label: 'Net profit margin', ideal: '5-20%', field: 'netProfitMarginTTM', min: 0.05, max: 0.20, pct: true },
+  { label: 'Return on equity', ideal: '12-20%+', field: 'returnOnEquityTTM', min: 0.12, max: null, pct: true },
+  { label: 'Return on assets', ideal: '5-10%+', field: 'returnOnAssetsTTM', min: 0.05, max: null, pct: true },
+  { label: 'P/E ratio', ideal: '20-40x', field: 'peRatioTTM', min: 0, max: 40, pct: false },
+  { label: 'Forward P/E', ideal: '20-30x', field: 'priceEarningsRatioTTM', min: 0, max: 30, pct: false },
+  { label: 'PEG ratio', ideal: '0.5-1.5x', field: 'pegRatioTTM', min: 0.5, max: 1.5, pct: false },
+  { label: 'P/B ratio', ideal: '0.5-1.5x', field: 'pbRatioTTM', min: 0.5, max: 1.5, pct: false },
+  { label: 'P/S ratio', ideal: '1-5x', field: 'priceToSalesRatioTTM', min: 1, max: 5, pct: false },
+  { label: 'EV/EBITDA', ideal: '10-20x', field: 'enterpriseValueMultipleTTM', min: 10, max: 20, pct: false },
+  { label: 'Debt/equity', ideal: 'below 1x', field: 'debtEquityRatioTTM', min: null, max: 1, pct: false },
+  { label: 'Current ratio', ideal: '1.5x+', field: 'currentRatioTTM', min: 1.5, max: null, pct: false },
+];
+
+async function analyze() {
+  const ticker = document.getElementById('ticker-input').value.trim().toUpperCase();
+  if (!ticker) return;
+
+  document.getElementById('error-box').style.display = 'none';
+  document.getElementById('hero').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('loading-text').textContent = 'Fetching data for ' + ticker + '...';
+  document.getElementById('analyze-btn').disabled = true;
+
+  try {
+    const d = await fetchAll(ticker);
+    currentData = d;
+
+    const q = d.quote?.[0];
+    const p = d.profile?.[0];
+    const r = d.ratios?.[0] || {};
+    const km = d.keymetrics?.[0] || {};
+
+    if (!q) throw new Error('Ticker not found: ' + ticker);
+
+    document.getElementById('h-name').childNodes[0].textContent = p?.companyName || q.name || ticker;
+    document.getElementById('h-ticker').textContent = ticker;
+    document.getElementById('h-sector').textContent = (p?.sector || '') + (p?.industry ? ' · ' + p.industry : '');
+    document.getElementById('h-price').textContent = '$' + (q.price || 0).toFixed(2);
+    const chg = q.changesPercentage || 0;
+    const chgEl = document.getElementById('h-change');
+    chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '% today';
+    chgEl.className = 'price-change ' + (chg >= 0 ? 'pos' : 'neg');
+
+    document.getElementById('s-mktcap').textContent = fmtBig(q.marketCap);
+    document.getElementById('s-ev').textContent = fmtBig(p?.dcf ? q.marketCap * 1.3 : null) || 'N/A';
+    document.getElementById('s-52w').textContent = '$' + (q.yearLow||0).toFixed(0) + ' - $' + (q.yearHigh||0).toFixed(0);
+    document.getElementById('s-vol').textContent = fmtVol(q.avgVolume);
+
+    // SCORECARD
+    let pass = 0, total = 0;
+    const list = document.getElementById('metrics-list');
+    list.innerHTML = '';
+    METRICS.forEach(m => {
+      const val = r[m.field] ?? km[m.field];
+      if (val == null || isNaN(val)) return;
+      total++;
+      let ok = true;
+      if (m.min != null && val < m.min) ok = false;
+      if (m.max != null && val > m.max) ok = false;
+      if (ok) pass++;
+      const display = m.pct ? (val*100).toFixed(1) + '%' : val.toFixed(2) + 'x';
+      const row = document.createElement('div');
+      row.className = 'metric-row';
+      row.innerHTML = `
+        <div><div class="metric-name">${m.label}</div><div class="metric-ideal">${m.ideal}</div></div>
+        <div class="metric-right">
+          <span class="metric-val">${display}</span>
+          <span class="badge badge-${ok?'pass':'fail'}">${ok?'Pass':'Fail'}</span>
+        </div>`;
+      list.appendChild(row);
+    });
+
+    const passRate = total > 0 ? Math.round((pass/total)*100) : 0;
+    const riskScore = Math.max(0, 100 - passRate);
+    const isGrowth = passRate >= 50;
+    const riskColor = riskScore < 35 ? 'var(--green)' : riskScore < 65 ? 'var(--yellow)' : 'var(--red)';
+
+    document.getElementById('score-summary').innerHTML = `
+      <div class="score-wrap">
+        <div class="score-circle" style="border-color:${riskColor}">
+          <div class="score-num" style="color:${riskColor}">${riskScore}</div>
+          <div class="score-sub">risk</div>
+        </div>
+        <div class="score-info">
+          <h3>${isGrowth ? 'Growth stock candidate' : 'Not a clear growth stock'}</h3>
+          <p>${pass} of ${total} metrics in ideal range (${passRate}% pass rate). Risk score ${riskScore}/100 — ${riskScore < 35 ? 'low risk profile' : riskScore < 65 ? 'moderate risk' : 'elevated risk'}.</p>
+        </div>
+      </div>`;
+
+    // DCF setup
+    const inc = d.income?.[0];
+    currentData.price = q.price;
+    currentData.revenue = inc?.revenue;
+    currentData.sharesOut = inc?.weightedAverageShsOut || q.sharesOutstanding;
+    currentData.cashAndEquivalents = d.balance?.[0]?.cashAndCashEquivalents || 0;
+    currentData.totalDebt = d.balance?.[0]?.totalDebt || 0;
+    document.getElementById('dcf-current').textContent = '$' + (q.price||0).toFixed(2);
+    runDCF();
+
+    // FOOTBALL FIELD
+    buildFootballField(q.price, r, km);
+
+    // COMPS
+    loadComps(ticker, q, r);
+
+    // CHART
+    buildChart(d.history);
+
+    // EARNINGS
+    buildEarnings(d.earnings);
+
+    // LBO / MA
+    buildLBO(q, p, r, km, d.income, d.balance);
+
+    // NEWS
+    buildNews(d.news);
+
+    // REPORT (async, non-blocking)
+    generateReport(ticker, q, p, r, pass, total, passRate, riskScore, isGrowth);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('hero').style.display = 'block';
+
+  } catch(e) {
+    showErr('Could not load data for that ticker. Check the symbol and try again. (' + e.message + ')');
+  }
+
+  document.getElementById('analyze-btn').disabled = false;
+}
+
+function runDCF() {
+  const rev = currentData.revenue;
+  const price = currentData.price;
+  const shares = currentData.sharesOut;
+  const cash = currentData.cashAndEquivalents || 0;
+  const debt = currentData.totalDebt || 0;
+  if (!rev || !shares || !price) return;
+
+  const g = parseFloat(document.getElementById('dcf-growth').value) / 100 || 0.15;
+  const tg = parseFloat(document.getElementById('dcf-terminal').value) / 100 || 0.03;
+  const wacc = parseFloat(document.getElementById('dcf-wacc').value) / 100 || 0.10;
+  const fcfMargin = parseFloat(document.getElementById('dcf-fcf').value) / 100 || 0.15;
+
+  let pv = 0;
+  let r = rev;
+  for (let i = 1; i <= 5; i++) {
+    r *= (1 + g);
+    const fcf = r * fcfMargin;
+    pv += fcf / Math.pow(1 + wacc, i);
+  }
+  const tv = (r * fcfMargin * (1 + tg)) / (wacc - tg);
+  pv += tv / Math.pow(1 + wacc, 5);
+  const equity = pv + cash - debt;
+  const impliedPrice = equity / shares;
+
+  const upside = ((impliedPrice - price) / price) * 100;
+  document.getElementById('dcf-implied').textContent = impliedPrice > 0 ? '$' + impliedPrice.toFixed(2) : 'N/A';
+  const ud = document.getElementById('dcf-updown');
+  ud.textContent = (upside >= 0 ? '+' : '') + upside.toFixed(1) + '% vs market';
+  ud.className = 'updown ' + (upside >= 0 ? 'pos' : 'neg');
+
+  currentData.dcfImplied = impliedPrice;
+  buildFootballField(price, {}, {});
+}
+
+function buildFootballField(currentPrice) {
+  const d = currentData;
+  const r = d.ratios?.[0] || {};
+  const km = d.keymetrics?.[0] || {};
+  const inc = d.income?.[0];
+
+  const ebitda = inc?.ebitda;
+  const revenue = inc?.revenue;
+  const eps = d.quote?.[0]?.eps;
+
+  const methods = [];
+
+  if (d.dcfImplied) methods.push({ label: 'DCF', low: d.dcfImplied * 0.85, high: d.dcfImplied * 1.15, color: '#4f8ef7' });
+
+  const pe = r.peRatioTTM;
+  if (pe && eps) {
+    methods.push({ label: 'P/E comps (15-25x)', low: eps * 15, high: eps * 25, color: '#34d399' });
+  }
+
+  if (ebitda && revenue) {
+    const evEbitdaLow = 8, evEbitdaHigh = 16;
+    const shares = d.income?.[0]?.weightedAverageShsOut || 1;
+    const debt = d.balance?.[0]?.totalDebt || 0;
+    const cash = d.balance?.[0]?.cashAndCashEquivalents || 0;
+    methods.push({ label: 'EV/EBITDA (8-16x)', low: Math.max(0,(ebitda * evEbitdaLow - debt + cash) / shares), high: Math.max(0,(ebitda * evEbitdaHigh - debt + cash) / shares), color: '#fbbf24' });
+  }
+
+  const ff = document.getElementById('football-field');
+  if (!methods.length) { ff.innerHTML = '<p style="color:var(--text3);font-size:13px;">Insufficient data for football field.</p>'; return; }
+
+  const allVals = methods.flatMap(m => [m.low, m.high, currentPrice]).filter(v => v > 0);
+  const maxVal = Math.max(...allVals) * 1.1;
+
+  ff.innerHTML = methods.map(m => {
+    const leftPct = (m.low / maxVal) * 100;
+    const widthPct = ((m.high - m.low) / maxVal) * 100;
+    const curPct = (currentPrice / maxVal) * 100;
+    return `<div class="ff-row">
+      <div class="ff-label">
+        <span>${m.label}</span>
+        <span style="font-family:var(--mono);font-size:11px;">$${m.low.toFixed(0)} - $${m.high.toFixed(0)}</span>
+      </div>
+      <div class="ff-bar-wrap">
+        <div class="ff-bar" style="margin-left:${leftPct}%;width:${widthPct}%;background:${m.color};opacity:0.8;">$${m.high.toFixed(0)}</div>
+        <div class="ff-current" style="left:${curPct}%">
+          <div class="ff-current-label">$${currentPrice.toFixed(0)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function loadComps(ticker, q, r) {
+  try {
+    const peersRes = await fetch(`/api/peers/${ticker}`);
+    const peersData = await peersRes.json();
+    const peers = peersData?.[0]?.peersList?.slice(0, 5) || [];
+
+    const tbody = document.getElementById('comps-body');
+    tbody.innerHTML = '';
+
+    const allTickers = [ticker, ...peers];
+    const quotes = await Promise.allSettled(allTickers.map(t => fetch(`/api/quote/${t}`).then(r => r.json())));
+    const ratios = await Promise.allSettled(allTickers.map(t => fetch(`/api/ratios/${t}`).then(r => r.json())));
+
+    allTickers.forEach((t, i) => {
+      const qd = quotes[i].status === 'fulfilled' ? quotes[i].value?.[0] : null;
+      const rd = ratios[i].status === 'fulfilled' ? ratios[i].value?.[0] : {};
+      if (!qd) return;
+      const tr = document.createElement('tr');
+      if (t === ticker) tr.classList.add('highlight');
+      tr.innerHTML = `
+        <td>${qd.name || t}</td>
+        <td>$${(qd.price||0).toFixed(2)}</td>
+        <td>${fmtBig(qd.marketCap)}</td>
+        <td>${rd?.peRatioTTM ? rd.peRatioTTM.toFixed(1) + 'x' : 'N/A'}</td>
+        <td>${rd?.enterpriseValueMultipleTTM ? rd.enterpriseValueMultipleTTM.toFixed(1) + 'x' : 'N/A'}</td>
+        <td>${rd?.priceToSalesRatioTTM ? rd.priceToSalesRatioTTM.toFixed(1) + 'x' : 'N/A'}</td>
+        <td>${rd?.grossProfitMarginTTM ? (rd.grossProfitMarginTTM*100).toFixed(1) + '%' : 'N/A'}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) {
+    document.getElementById('comps-body').innerHTML = '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px;">Could not load peer data</td></tr>';
+  }
+}
+
+function buildChart(histData) {
+  const hist = histData?.historical?.slice().reverse() || [];
+  if (!hist.length) return;
+  const labels = hist.map(h => h.date);
+  const prices = hist.map(h => h.close);
+  if (priceChart) priceChart.destroy();
+  priceChart = new Chart(document.getElementById('price-chart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: prices,
+        borderColor: '#4f8ef7',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        tension: 0.2,
+        fill: true,
+        backgroundColor: 'rgba(79,142,247,0.06)'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 6, font: { size: 11 }, color: '#555b6a' }, grid: { display: false } },
+        y: { ticks: { font: { size: 11 }, color: '#555b6a', callback: v => '$' + v.toFixed(0) }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function buildEarnings(data) {
+  const list = document.getElementById('earnings-list');
+  const items = data?.slice(0, 6) || [];
+  if (!items.length) { list.innerHTML = '<p style="color:var(--text3);font-size:13px;">No earnings data available.</p>'; return; }
+  list.innerHTML = items.map(e => `
+    <div class="earnings-row">
+      <span style="font-family:var(--mono);color:var(--text2);">${e.date}</span>
+      <span>EPS est: <b style="font-family:var(--mono);">${e.epsEstimated != null ? '$'+e.epsEstimated.toFixed(2) : 'N/A'}</b></span>
+      <span>Actual: <b style="font-family:var(--mono);color:${e.eps >= e.epsEstimated ? 'var(--green)' : 'var(--red)'}">${e.eps != null ? '$'+e.eps.toFixed(2) : 'N/A'}</b></span>
+    </div>`).join('');
+}
+
+function buildLBO(q, p, r, km, income, balance) {
+  const inc = income?.[0] || {};
+  const bal = balance?.[0] || {};
+  const ebitda = inc.ebitda;
+  const debt = bal.totalDebt || 0;
+  const cash = bal.cashAndCashEquivalents || 0;
+  const mktCap = q.marketCap || 0;
+  const ev = mktCap + debt - cash;
+  const evEbitda = ebitda ? ev / ebitda : null;
+  const leverage = ebitda ? (debt / ebitda) : null;
+  const interestCoverage = inc.operatingIncome && inc.interestExpense ? (inc.operatingIncome / Math.abs(inc.interestExpense)) : null;
+
+  const lboGrid = document.getElementById('lbo-grid');
+  lboGrid.innerHTML = [
+    { label: 'EV', val: fmtBig(ev) },
+    { label: 'EBITDA', val: fmtBig(ebitda) },
+    { label: 'EV/EBITDA', val: evEbitda ? evEbitda.toFixed(1) + 'x' : 'N/A' },
+    { label: 'Debt/EBITDA', val: leverage ? leverage.toFixed(1) + 'x' : 'N/A' },
+    { label: 'Interest coverage', val: interestCoverage ? interestCoverage.toFixed(1) + 'x' : 'N/A' },
+    { label: 'Net debt', val: fmtBig(debt - cash) },
+  ].map(s => `<div class="lbo-stat"><div class="label">${s.label}</div><div class="val">${s.val}</div></div>`).join('');
+
+  const lboFeasible = leverage != null && leverage < 4 && evEbitda != null && evEbitda < 15;
+  document.getElementById('lbo-verdict').innerHTML = `<strong>LBO feasibility: <span style="color:${lboFeasible?'var(--green)':'var(--red)'}">
+    ${lboFeasible ? 'Feasible' : 'Challenging'}</span></strong><br>
+    ${leverage != null ? `Current leverage of ${leverage.toFixed(1)}x Debt/EBITDA ${leverage < 4 ? 'is within typical LBO range (3-5x)' : 'exceeds typical LBO threshold'}. ` : ''}
+    ${evEbitda != null ? `Entry multiple of ${evEbitda.toFixed(1)}x EV/EBITDA ${evEbitda < 12 ? 'provides reasonable room for financial engineering' : 'may compress sponsor returns at exit'}.` : ''}`;
+
+  const maGrid = document.getElementById('ma-grid');
+  const revGrowth = r.revenueGrowthTTM || km.revenueGrowth;
+  const grossMargin = r.grossProfitMarginTTM;
+  maGrid.innerHTML = [
+    { label: 'Market cap', val: fmtBig(mktCap) },
+    { label: 'EV', val: fmtBig(ev) },
+    { label: 'Revenue growth', val: revGrowth ? (revGrowth*100).toFixed(1)+'%' : 'N/A' },
+    { label: 'Gross margin', val: grossMargin ? (grossMargin*100).toFixed(1)+'%' : 'N/A' },
+  ].map(s => `<div class="lbo-stat"><div class="label">${s.label}</div><div class="val">${s.val}</div></div>`).join('');
+
+  const maAttractive = evEbitda != null && evEbitda < 12 && grossMargin != null && grossMargin > 0.3;
+  document.getElementById('ma-verdict').innerHTML = `<strong>M&A attractiveness: <span style="color:${maAttractive?'var(--green)':'var(--yellow)'}">
+    ${maAttractive ? 'Attractive target' : 'Neutral'}</span></strong><br>
+    ${evEbitda != null ? `Trading at ${evEbitda.toFixed(1)}x EV/EBITDA ${evEbitda < 12 ? 'which is below typical acquisition premiums' : 'which is above typical acquisition premiums'}. ` : ''}
+    ${grossMargin != null ? `Gross margins of ${(grossMargin*100).toFixed(1)}% ${grossMargin > 0.3 ? 'suggest a defensible business with margin expansion potential for an acquirer' : 'may limit synergy realization for a strategic buyer'}.` : ''}`;
+}
+
+function buildNews(newsData) {
+  const list = document.getElementById('news-list');
+  const items = newsData?.slice(0, 8) || [];
+  if (!items.length) { list.innerHTML = '<p style="color:var(--text3);font-size:13px;">No recent news available.</p>'; return; }
+  list.innerHTML = items.map(n => `
+    <div class="news-item">
+      <a href="${n.url}" target="_blank" rel="noopener">${n.title}</a>
+      <div class="news-meta">${n.publishedDate?.split(' ')[0] || ''} · ${n.site || ''}</div>
+    </div>`).join('');
+}
+
+async function generateReport(ticker, q, p, r, pass, total, passRate, riskScore, isGrowth) {
+  try {
+    const prompt = `You are a sell-side equity research analyst writing a concise investment report for ${p?.companyName || ticker} (${ticker}).
+
+Company: ${p?.companyName || ticker}, Sector: ${p?.sector || 'unknown'}, Industry: ${p?.industry || 'unknown'}
+Price: $${(q.price||0).toFixed(2)}, Market Cap: ${fmtBig(q.marketCap)}
+Scorecard: ${pass}/${total} metrics in ideal range (${passRate}% pass rate), Risk score: ${riskScore}/100, Growth stock: ${isGrowth ? 'Yes' : 'No'}
+
+Use web search to find the latest news and trends for ${ticker} before writing. Then write the report with exactly these headers each on their own line:
+
+INDUSTRY OVERVIEW
+GROWTH TAILWINDS  
+KEY RISKS
+COMPETITIVE POSITION
+PRECEDENTS & DEAL ACTIVITY
+VERDICT
+
+Write 2-4 sentences per section. Be specific and analytical. No bullets. Plain prose only.`;
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    const data = await res.json();
+    const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+
+    const sections = [
+      { key: 'INDUSTRY OVERVIEW', color: 'var(--accent)' },
+      { key: 'GROWTH TAILWINDS', color: 'var(--green)' },
+      { key: 'KEY RISKS', color: 'var(--red)' },
+      { key: 'COMPETITIVE POSITION', color: 'var(--yellow)' },
+      { key: 'PRECEDENTS & DEAL ACTIVITY', color: 'var(--text2)' },
+      { key: 'VERDICT', color: 'var(--text)' },
+    ];
+
+    let html = '';
+    sections.forEach((sec, i) => {
+      const next = sections[i+1];
+      const start = text.indexOf(sec.key);
+      if (start === -1) return;
+      const end = next ? text.indexOf(next.key) : text.length;
+      const body = text.slice(start + sec.key.length, end > -1 ? end : undefined).replace(/\n+/g,' ').trim();
+      html += `<div class="report-section">
+        <h4 style="color:${sec.color}">${sec.key.charAt(0)+sec.key.slice(1).toLowerCase().replace(/\b\w/g,c=>c.toUpperCase())}</h4>
+        <p>${body}</p>
+      </div>`;
+    });
+
+    document.getElementById('report-content').innerHTML = html || `<p style="color:var(--text2);font-size:14px;line-height:1.75">${text}</p>`;
+  } catch(e) {
+    document.getElementById('report-content').innerHTML = '<p style="color:var(--text3);font-size:13px;">Could not generate report. Try switching to the Report tab after a moment.</p>';
+  }
+}
+
+document.getElementById('ticker-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+</script>
+</body>
+</html>
