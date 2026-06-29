@@ -102,6 +102,7 @@ def news(ticker):
             "x-api-key": ANTHROPIC_KEY,
             "content-type": "application/json",
             "anthropic-version": "2023-06-01",
+            "anthropic-beta": "web-search-2025-03-05",
         },
         json={
             "model": "claude-sonnet-4-6",
@@ -149,6 +150,7 @@ def report(ticker):
                 "x-api-key": ANTHROPIC_KEY,
                 "content-type": "application/json",
                 "anthropic-version": "2023-06-01",
+                "anthropic-beta": "web-search-2025-03-05",
             },
             json={
                 "model": "claude-sonnet-4-6",
