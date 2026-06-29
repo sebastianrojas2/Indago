@@ -410,11 +410,13 @@ function fmtNum(v, dec=1) {
 }
 
 function fmtBig(v) {
-  if (!v || isNaN(v)) return 'N/A';
-  if (v >= 1e12) return '$' + (v/1e12).toFixed(2) + 'T';
-  if (v >= 1e9) return '$' + (v/1e9).toFixed(1) + 'B';
-  if (v >= 1e6) return '$' + (v/1e6).toFixed(1) + 'M';
-  return '$' + v.toFixed(0);
+  if (v == null || isNaN(v) || v === 0) return 'N/A';
+  const sign = v < 0 ? '-' : '';
+  const a = Math.abs(v);
+  if (a >= 1e12) return sign + '$' + (a/1e12).toFixed(2) + 'T';
+  if (a >= 1e9) return sign + '$' + (a/1e9).toFixed(1) + 'B';
+  if (a >= 1e6) return sign + '$' + (a/1e6).toFixed(1) + 'M';
+  return sign + '$' + a.toFixed(0);
 }
 
 function fmtVol(v) {
