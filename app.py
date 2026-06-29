@@ -1,5 +1,6 @@
 import os
 import json
+import traceback
 import requests
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -106,7 +107,7 @@ def news(ticker):
             "model": "claude-sonnet-4-6",
             "max_tokens": 1024,
             "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 3}],
-            "messages": [{"role": "user", "content": f"Find the 6 most recent news headlines about {ticker.upper()} stock. Return ONLY valid JSON — no markdown, no code fences, no extra text. Format: [{{\"title\":\"...\",\"source\":\"...\",\"date\":\"YYYY-MM-DD\",\"url\":\"...\"}}]"}],
+            "messages": [{"role": "user", "content": f"Find the 10 most recent news headlines about {ticker.upper()} stock. Return ONLY valid JSON — no markdown, no code fences, no extra text. Format: [{{\"title\":\"...\",\"source\":\"...\",\"date\":\"YYYY-MM-DD\",\"url\":\"...\"}}]"}],
         },
         timeout=30,
     )
@@ -119,6 +120,7 @@ def news(ticker):
         import re
         m = re.search(r"\[.*\]", text, re.DOTALL)
         articles = json.loads(m.group()) if m else []
+    articles.sort(key=lambda a: a.get("date", ""), reverse=True)
     return jsonify(articles)
 
 
@@ -162,7 +164,7 @@ def report(ticker):
         text = "".join(b["text"] for b in blocks if b.get("type") == "text")
         return jsonify({"text": text})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 
 if __name__ == "__main__":

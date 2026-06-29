@@ -789,7 +789,7 @@ function buildLBO(q, p, r, km, income, balance) {
 
 function buildNews(newsData) {
   const list = document.getElementById('news-list');
-  const items = newsData?.slice(0, 6) || [];
+  const items = newsData?.slice(0, 10) || [];
   if (!items.length) { list.innerHTML = '<p style="color:var(--text3);font-size:13px;">No recent news available.</p>'; return; }
   list.innerHTML = items.map(n => `
     <div class="news-item">
