@@ -219,8 +219,8 @@
 
 <div class="search-wrap">
   <div class="search-box">
-    <input type="text" id="ticker-input" placeholder="Enter a ticker symbol (e.g. AAPL)" maxlength="6" />
-    <button class="btn" onclick="analyze()" id="analyze-btn">Analyze</button>
+    <input type="text" id="ticker-input" placeholder="Enter a ticker symbol (e.g. AAPL)" maxlength="6" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" onkeydown="if(event.key==='Enter')analyze()" />
+    <button type="button" class="btn" onclick="analyze()" id="analyze-btn">Analyze</button>
   </div>
   <div class="chips">
     <span class="chip" onclick="quick('AAPL')">AAPL</span>
